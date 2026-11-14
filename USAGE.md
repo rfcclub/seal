@@ -6,13 +6,14 @@
 import { Seal } from './src/index.ts'
 import { TrustMemory } from './src/trust-memory.ts'
 import { ariaExtension } from './src/extensions/agent/index.ts'
-import { createMinimaxReviewer } from './src/adapters/minimax-llm-reviewer.ts'
+import { createReviewer } from './src/adapters/generic-llm-reviewer.ts'
 
 // One-time setup (boot of your agent system)
 const agentMemory = new TrustMemory()
 Seal.withTrustMemory(agentMemory)
 Seal.extend(ariaExtension)               // optional: Alpha identity governance
-Seal.withLLM(createMinimaxReviewer())    // optional: MiniMax-M3 semantic review
+// optional: semantic review through any OpenAI-compatible endpoint (no default provider)
+Seal.withLLM(createReviewer({ baseUrl: 'http://localhost:8080/v1', model: 'local' }))
 
 // Each review call
 const verdict = await Seal.review({
@@ -55,12 +56,11 @@ The Python port lives in `~/work/aquarium/seal` (package name `seal`):
 # Import from the aquarium/seal python package
 from seal import Seal
 from seal.trust_memory import TrustMemory
-from seal.adapters.minimax_llm_reviewer import create_minimax_reviewer
 
 # One-time setup
 agent_memory = TrustMemory()
 Seal.with_trust_memory(agent_memory)
-Seal.with_llm(create_minimax_reviewer())  # optional
+# Seal.with_llm(...)  # optional; the Python port has its own reviewer adapters, see that package
 
 # Each review call
 verdict = Seal.review({

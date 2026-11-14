@@ -34,4 +34,23 @@ describe('parseArgs — --llm value capture', () => {
     expect(parsed.json).toBe(true)
     expect(positional).toEqual(['code', 'file.ts'])
   })
+
+  it('a value flag never consumes the next flag: it is reported as missing', () => {
+    const { parsed, errors } = parseArgs(['code', 'f', '--llm', '--llm-base-url', 'http://h/v1', '--llm-model', '--llm-key-env', 'K', '--json'])
+    expect(errors).toEqual(['--llm-model needs a value'])
+    expect(parsed['llm-base-url']).toBe('http://h/v1')
+    expect(parsed['llm-key-env']).toBe('K')
+    expect(parsed.json).toBe(true)
+  })
+
+  it('a value flag at the end of the line is reported as missing', () => {
+    expect(parseArgs(['code', 'f', '--llm-key-env']).errors).toEqual(['--llm-key-env needs a value'])
+    expect(parseArgs(['code', 'f', '--llm-mode']).errors).toEqual(['--llm-mode needs a value'])
+    expect(parseArgs(['code', 'f', '--spec', '--risk', 'HIGH']).errors).toEqual(['--spec needs a value'])
+  })
+
+  it('well-formed flags give no errors; --help is boolean', () => {
+    expect(parseArgs(['code', 'f', '--spec', 's.md', '--risk', 'HIGH', '--llm-key-env', 'K']).errors).toEqual([])
+    expect(parseArgs(['--help']).parsed.help).toBe(true)
+  })
 })

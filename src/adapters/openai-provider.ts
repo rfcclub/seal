@@ -5,9 +5,7 @@
  * Auto-appends /chat/completions to baseUrl.
  *
  * Usage:
- *   Seal.withLLM(createReviewerFromProvider('minimax'))
- *   Seal.withLLM(createReviewerFromProvider('xiaomi'))
- *   Seal.withLLM(createReviewerFromProvider('gemini'))
+ *   Seal.withLLM(createReviewerFromProvider('<name>'))
  *   Seal.withLLM(new GenericOpenAIProvider({
  *     baseUrl: 'https://api.custom.com/v1',
  *     model: 'my-model',
@@ -92,7 +90,7 @@ export function loadProviderConfig(name: string, modelIndex = 0): ProviderConfig
   const rawKey  = get('apiKey')
   const apiKey  = resolveEnvRef(rawKey)
 
-  // Extract models list (lines like "  - id: MiniMax-M3")
+  // Extract models list (lines like "  - id: model-name")
   const models = [...raw.matchAll(/^\s+-\s+id:\s+(.+)$/gm)].map(m => m[1].trim())
   const model = models[modelIndex] ?? models[0] ?? 'default'
 

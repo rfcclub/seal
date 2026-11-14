@@ -1,25 +1,16 @@
 /**
- * Generic OpenAI-compatible LLM Reviewer Adapter
- * Works with any provider that speaks the OpenAI chat completions API:
- * MiniMax, Fireworks, Gemini (OpenAI-compat), Qwen/MiMo, local (port 3546), etc.
+ * Generic OpenAI-compatible LLM reviewer.
+ *
+ * Provider-neutral: it talks to any endpoint that speaks the OpenAI chat completions API
+ * (a hosted service, a gateway, a local server). There is no built-in provider, base URL,
+ * model or key variable: the caller supplies them, and without them nothing is sent.
  *
  * Usage:
- *   Seal.withLLM(createReviewer({ provider: 'minimax' }))
- *   Seal.withLLM(createReviewer({ provider: 'fireworks', model: 'accounts/...' }))
- *   Seal.withLLM(createReviewer({ baseUrl: 'http://localhost:3546/v1', apiKey: 'none', model: 'local' }))
+ *   Seal.withLLM(createReviewer({ baseUrl: 'https://gateway.example/v1', model: 'my-model', apiKeyEnv: 'MY_LLM_KEY' }))
+ *   Seal.withLLM(createReviewer({ baseUrl: 'http://localhost:8080/v1', model: 'local' }))   // no key
  */
 import { LLMReviewerAdapter, LLMSignals, SealInput, PartialVerdict } from '../types.js'
 import { wrapUntrustedClaim, UNTRUSTED_CLAIM_PREAMBLE } from './sanitize-claim-input.js'
-
-// Known providers from ~/.seal/providers.d/
-const PROVIDERS: Record<string, { baseUrl: string; apiKeyEnv: string; defaultModel: string }> = {
-  minimax:   { baseUrl: 'https://api.minimax.io/v1',               apiKeyEnv: 'MINIMAX_PLAN_KEY',   defaultModel: 'MiniMax-M3' },
-  fireworks: { baseUrl: 'https://api.fireworks.ai/inference/v1',   apiKeyEnv: 'FIREWORKS_API_KEY',  defaultModel: 'accounts/fireworks/models/mixtral-8x7b-instruct' },
-  gemini:    { baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', apiKeyEnv: 'GEMINI_API_KEY', defaultModel: 'gemini-2.0-flash' },
-  xiaomimo:  { baseUrl: 'https://token-plan-sgp.xiaomimimo.com/v1', apiKeyEnv: 'XIAOMI_MIMO_API_KEY', defaultModel: 'mimo-v2.5-pro' },
-  openai:    { baseUrl: 'https://api.openai.com/v1',               apiKeyEnv: 'OPENAI_API_KEY',     defaultModel: 'gpt-4o-mini' },
-  local:     { baseUrl: 'http://localhost:3546/v1',                apiKeyEnv: '',                   defaultModel: 'local' },
-}
 
 const SYSTEM_PROMPT = `You are Seal, a quality gate in an AI engineering workflow.
 
@@ -56,36 +47,44 @@ export function buildMessage(input: SealInput, partial: PartialVerdict): string 
 }
 
 function extractJSON(raw: string): string {
-  // Strip <think>...</think> blocks (thinking models like MiniMax-M3, MiMo)
+  // Strip <think>...</think> blocks (thinking models)
   const stripped = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
   const match = stripped.match(/\{[\s\S]*\}/)
   return match ? match[0] : stripped
 }
 
 export interface GenericReviewerOptions {
-  provider?: keyof typeof PROVIDERS   // named provider from PROVIDERS table
-  baseUrl?: string                    // override — takes precedence over provider
-  apiKey?: string                     // override — takes precedence over env var
-  model?: string                      // override model
-  timeoutMs?: number                  // default 30000
+  baseUrl: string          // required, e.g. https://host/v1 (/chat/completions is appended)
+  model: string            // required
+  apiKey?: string          // literal key; sent as a Bearer token
+  apiKeyEnv?: string       // name of an environment variable that holds the key
+  timeoutMs?: number       // default 30000
 }
 
 export class GenericLLMReviewer implements LLMReviewerAdapter {
   private baseUrl: string
-  private apiKey: string
   private model: string
+  private apiKey: string
+  private apiKeyEnv: string
   private timeoutMs: number
 
-  constructor(opts: GenericReviewerOptions = {}) {
-    const preset = opts.provider ? PROVIDERS[opts.provider] : null
-
-    this.baseUrl  = opts.baseUrl  ?? preset?.baseUrl  ?? PROVIDERS.minimax.baseUrl
-    this.apiKey   = opts.apiKey   ?? (preset ? (process.env[preset.apiKeyEnv] ?? '') : (process.env.MINIMAX_PLAN_KEY ?? ''))
-    this.model    = opts.model    ?? preset?.defaultModel ?? PROVIDERS.minimax.defaultModel
+  constructor(opts: GenericReviewerOptions) {
+    if (!opts?.baseUrl) throw new Error('LLM reviewer needs baseUrl; there is no default provider')
+    if (!opts.model) throw new Error('LLM reviewer needs model; there is no default model')
+    this.baseUrl = opts.baseUrl.replace(/\/+$/, '')
+    this.model = opts.model
+    this.apiKeyEnv = opts.apiKeyEnv ?? ''
+    // The key is only what the caller named: the literal apiKey, or the variable apiKeyEnv.
+    // No other variable is ever read.
+    this.apiKey = opts.apiKey ?? (this.apiKeyEnv ? (process.env[this.apiKeyEnv] ?? '') : '')
     this.timeoutMs = opts.timeoutMs ?? 30_000
   }
 
   async review(input: SealInput, partial: PartialVerdict): Promise<LLMSignals> {
+    if (this.apiKeyEnv && !this.apiKey) {
+      // A key variable was named but is empty: fail before any request, nothing is sent.
+      throw new Error(`LLM reviewer not called: ${this.apiKeyEnv} is not set`)
+    }
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.timeoutMs)
 
@@ -96,7 +95,7 @@ export class GenericLLMReviewer implements LLMReviewerAdapter {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': this.apiKey ? `Bearer ${this.apiKey}` : 'Bearer none',
+          ...(this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {}),
         },
         body: JSON.stringify({
           model: this.model,
@@ -138,10 +137,20 @@ export class GenericLLMReviewer implements LLMReviewerAdapter {
   }
 }
 
-/** Pre-configured factories */
+/**
+ * Build reviewer options from explicit values, falling back to the SEAL_LLM_* environment
+ * variables: SEAL_LLM_BASE_URL, SEAL_LLM_MODEL, SEAL_LLM_KEY_ENV (the NAME of the variable
+ * that holds the key). Returns the missing field names when incomplete. Never guesses.
+ */
+export function resolveReviewerOptions(
+  explicit: { baseUrl?: string; model?: string; apiKeyEnv?: string } = {},
+  env: Record<string, string | undefined> = process.env,
+): { options: GenericReviewerOptions } | { missing: string[] } {
+  const baseUrl = explicit.baseUrl || env.SEAL_LLM_BASE_URL || ''
+  const model = explicit.model || env.SEAL_LLM_MODEL || ''
+  const apiKeyEnv = explicit.apiKeyEnv || env.SEAL_LLM_KEY_ENV || undefined
+  const missing = [!baseUrl && 'base URL (--llm-base-url or SEAL_LLM_BASE_URL)', !model && 'model (--llm-model or SEAL_LLM_MODEL)'].filter(Boolean) as string[]
+  return missing.length ? { missing } : { options: { baseUrl, model, apiKeyEnv } }
+}
+
 export const createReviewer = (opts: GenericReviewerOptions) => new GenericLLMReviewer(opts)
-export const createMinimaxReviewer  = (model?: string) => new GenericLLMReviewer({ provider: 'minimax',   model })
-export const createFireworksReviewer = (model?: string) => new GenericLLMReviewer({ provider: 'fireworks', model })
-export const createGeminiReviewer   = (model?: string) => new GenericLLMReviewer({ provider: 'gemini',    model })
-export const createMiMoReviewer     = (model?: string) => new GenericLLMReviewer({ provider: 'xiaomimo',  model })
-export const createLocalReviewer    = (model?: string) => new GenericLLMReviewer({ provider: 'local',     model })

@@ -2,8 +2,9 @@
 import { Seal } from './index.js'
 import { ArtifactType, RiskLevel } from './types.js'
 import { VERSION } from './version.js'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, realpathSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const BOLD = '\x1b[1m'
 const DIM = '\x1b[2m'
@@ -12,6 +13,19 @@ const GREEN = '\x1b[32m'
 const YELLOW = '\x1b[33m'
 const CYAN = '\x1b[36m'
 const RESET = '\x1b[0m'
+
+// True when this file is the program being run (node dist/cli.js, the npm bin symlink, bun).
+// import.meta.main is not defined on Node 22.17 and older, 23.x and 24.0-24.1, which made the
+// command exit 0 silently there, so compare the entry path instead.
+function isEntryPoint(): boolean {
+  const entry = process.argv[1]
+  if (!entry) return false
+  try {
+    return realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url))
+  } catch {
+    return false
+  }
+}
 
 function colorForVerdict(v: string): string {
   if (v === 'PASS') return GREEN
@@ -32,7 +46,11 @@ ${BOLD}COMMANDS${RESET}
   ${CYAN}review${RESET}   <file>       Review with full control over artifact type
 
 ${BOLD}OPTIONS${RESET}
-  --llm [provider]             Enable LLM reviewer (auto | minimax | fireworks | gemini | xiaomi | local)
+  --llm                        Enable the LLM reviewer (any OpenAI-compatible endpoint; no default provider)
+  --llm-base-url <url>         Endpoint base URL (or SEAL_LLM_BASE_URL)
+  --llm-model <name>           Model name (or SEAL_LLM_MODEL)
+  --llm-key-env <VAR>          Name of the env var holding the API key (or SEAL_LLM_KEY_ENV); omit for no key
+  --llm-mode <always|auto>     always (default) or auto (call the reviewer only when the heuristic result is ambiguous)
   --spec <file>                Spec file for compliance check
   --locked-criteria <file>     JSON file with locked acceptance criteria (plan_review)
   --risk <level>               Risk hint: low, medium, high, critical
@@ -42,7 +60,7 @@ ${BOLD}OPTIONS${RESET}
 
 ${BOLD}EXAMPLES${RESET}
   ${DIM}# Review with LLM reviewer${RESET}
-  seal code src/auth.ts --llm minimax
+  seal code src/auth.ts --llm --llm-base-url http://localhost:8080/v1 --llm-model local
 
   ${DIM}# Review a code change${RESET}
   seal code src/auth.ts --spec specs/auth.md
@@ -58,11 +76,12 @@ ${BOLD}EXAMPLES${RESET}
 
 export function parseArgs(args: string[]) {
   const parsed: Record<string, string | boolean> = {}
+  const errors: string[] = []
   let positional: string[] = []
   for (let i = 0; i < args.length; i++) {
     if (args[i].startsWith('--')) {
       const key = args[i].slice(2)
-      if (key === 'json' || key === 'version') { parsed[key] = true; continue }
+      if (key === 'json' || key === 'version' || key === 'help') { parsed[key] = true; continue }
       // --llm takes an optional value (provider name, or 'auto') — but must not swallow
       // the NEXT flag as its value when no provider was actually given (bare --llm).
       if (key === 'llm') {
@@ -75,12 +94,21 @@ export function parseArgs(args: string[]) {
         }
         continue
       }
-      parsed[key] = args[++i] ?? ''
+      // Every other flag takes a value. A missing value, or a following flag, is an error:
+      // the next flag is never consumed as the value.
+      const next = args[i + 1]
+      if (next === undefined || next.startsWith('--')) {
+        errors.push(`--${key} needs a value`)
+        parsed[key] = ''
+        continue
+      }
+      parsed[key] = next
+      i++
     } else {
       positional.push(args[i])
     }
   }
-  return { positional, parsed }
+  return { positional, parsed, errors }
 }
 
 function formatVerdict(v: any, json: boolean) {
@@ -126,28 +154,48 @@ function formatVerdict(v: any, json: boolean) {
 }
 
 async function run(args: string[]) {
-  const { positional, parsed } = parseArgs(args)
+  const { positional, parsed, errors } = parseArgs(args)
   const cmd = positional[0]
 
   if (parsed['version'] || cmd === 'version' || cmd === '-v') { console.log(`seal v${VERSION}`); process.exit(0) }
   // An explicit help request is not an error; a missing command is.
   if (cmd === 'help' || cmd === '--help' || cmd === '-h' || (!cmd && parsed['help'] !== undefined)) usage(0)
   if (!cmd) usage()
+  // Bad flag values stop the run before any file is read and before anything is sent.
+  if (errors.length > 0) {
+    console.error(`Error: ${errors.join('; ')}. Nothing was sent.`)
+    process.exit(2)
+  }
 
   // Wire LLM reviewer if --llm flag is present
   let llmFlagUsed = false
   if (parsed['llm']) {
     llmFlagUsed = true
-    const { createReviewer } = await import('./adapters/generic-llm-reviewer.js')
-    const llmValue = parsed['llm']
-    if (llmValue === 'auto') {
-      // --llm auto (AD-5): heuristic-scorer runs first; LLM reviewer only called when
-      // the heuristic result is ambiguous. Provider auto-detects from env vars, same as bare --llm.
-      Seal.withLLM(createReviewer({}), { mode: 'auto' })
-    } else {
-      const provider = llmValue === true ? undefined : (llmValue as string)
-      Seal.withLLM(createReviewer({ provider: provider as any }))
+    const { createReviewer, resolveReviewerOptions } = await import('./adapters/generic-llm-reviewer.js')
+    // Provider-neutral: any OpenAI-compatible endpoint. No default provider, URL or model;
+    // if they are not given (flags or SEAL_LLM_* environment variables) stop before reading
+    // or sending anything.
+    if (typeof parsed['llm'] === 'string') {
+      console.error('Error: --llm takes no value. Name the endpoint with --llm-base-url and --llm-model. Nothing was sent.')
+      process.exit(2)
     }
+    const resolved = resolveReviewerOptions({
+      baseUrl: parsed['llm-base-url'] as string | undefined,
+      model: parsed['llm-model'] as string | undefined,
+      apiKeyEnv: parsed['llm-key-env'] as string | undefined,
+    })
+    if ('missing' in resolved) {
+      console.error(`Error: --llm needs an endpoint. Missing: ${resolved.missing.join('; ')}. No provider is chosen for you. Nothing was sent.`)
+      process.exit(2)
+    }
+    const modeFlag = parsed['llm-mode']
+    if (modeFlag !== undefined && modeFlag !== 'always' && modeFlag !== 'auto') {
+      console.error('Error: --llm-mode must be "always" or "auto"')
+      process.exit(2)
+    }
+    // --llm-mode auto (AD-5): the heuristic scorer runs first; the reviewer is only called
+    // when the heuristic result is ambiguous.
+    Seal.withLLM(createReviewer(resolved.options), modeFlag === 'auto' ? { mode: 'auto' } : undefined)
   }
 
   let artifactFile: string | null = null
@@ -228,7 +276,7 @@ async function run(args: string[]) {
   // Hint when --llm used but LLM reviewer failed (no API key)
   if (llmFlagUsed && verdict.assumptions_detected?.some(a => a.includes('L2') && (a.includes('not reviewed') || a.includes('error')))) {
     if (!jsonOutput) {
-      console.log(`${DIM}💡 Tip: Set an API key env var (MINIMAX_PLAN_KEY, FIREWORKS_API_KEY, GEMINI_API_KEY, etc.) to enable LLM review.${RESET}`)
+      console.log(`${DIM}💡 Tip: the LLM reviewer failed; check the endpoint and the variable named by --llm-key-env.${RESET}`)
     }
   }
 
@@ -238,7 +286,7 @@ async function run(args: string[]) {
 
 // Guarded so importing this module (e.g. from tests, to exercise parseArgs) doesn't
 // also execute the CLI and call process.exit().
-if (import.meta.main) {
+if (isEntryPoint()) {
   run(process.argv.slice(2)).catch(err => {
     console.error(`Error: ${err.message}`)
     process.exit(1)

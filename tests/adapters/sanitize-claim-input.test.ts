@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'bun:test'
 import { wrapUntrustedClaim, UNTRUSTED_CLAIM_OPEN, UNTRUSTED_CLAIM_CLOSE } from '../../src/adapters/sanitize-claim-input.ts'
 import { buildMessage as buildGenericMessage } from '../../src/adapters/generic-llm-reviewer.ts'
-import { buildUserMessage as buildMinimaxMessage } from '../../src/adapters/minimax-llm-reviewer.ts'
 import { buildMessage as buildOpenAIMessage } from '../../src/adapters/openai-provider.ts'
 import type { SealInput, PartialVerdict } from '../../src/types.ts'
 
@@ -46,8 +45,8 @@ describe('LLM reviewer prompt builders isolate claim text', () => {
     expect(injIdx).toBeLessThan(closeIdx)
   })
 
-  it('minimax-llm-reviewer: wraps input.output in untrusted-data delimiters', () => {
-    const message = buildMinimaxMessage(INPUT, PARTIAL)
+  it('generic-llm-reviewer: wraps input.output in untrusted-data delimiters', () => {
+    const message = buildGenericMessage(INPUT, PARTIAL)
     expect(message).toContain(UNTRUSTED_CLAIM_OPEN)
     expect(message.indexOf(UNTRUSTED_CLAIM_OPEN)).toBeLessThan(message.indexOf(INJECTION))
     expect(message.indexOf(INJECTION)).toBeLessThan(message.indexOf(UNTRUSTED_CLAIM_CLOSE))
