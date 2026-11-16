@@ -2,7 +2,7 @@
   "name": "seal-gate",
   "version": "0.2.0",
   "description": "Universal standalone AI quality gate — deterministic core + optional LLM overlay. Verifies claims, checks evidence, classifies risk before proceeding.",
-  "author": "Alpha",
+  "author": "rfcclub",
   "homepage": "~/work/seal-gate",
   "skills": [
     {

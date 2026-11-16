@@ -12,7 +12,6 @@ Read the privacy notes first: turning it on sends your text to the endpoint you 
 |---|---|
 | CLI | `--llm --llm-base-url <url> --llm-model <name>` on a code review (`seal code`, `seal review`, `seal <file>`). `seal plan` never calls the reviewer (see below). |
 | Library | `Seal.withLLM(createReviewer({ baseUrl, model, apiKeyEnv }))`. `Seal.withLLM(null)` turns it off. See [Library API](api.md#llm-reviewer). |
-| Claude Code Stop hook | Set `SEAL_LLM_BASE_URL` and `SEAL_LLM_MODEL`. See [Agent hooks](agent-hooks.md#claude-stop-hookts). |
 
 CLI options:
 

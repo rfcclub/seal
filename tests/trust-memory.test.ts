@@ -10,25 +10,25 @@ describe('TrustMemory', () => {
 
   test('recordReview adds to history', () => {
     const mem = new TrustMemory()
-    mem.record('agent', { verdict: 'PASS', trust_score: 100, risk_level: 'MEDIUM', blocking_count: 0 })
-    expect(mem.getHistory('agent')).toHaveLength(1)
-    expect(mem.getHistory('agent')[0].verdict).toBe('PASS')
+    mem.record('agent-a', { verdict: 'PASS', trust_score: 100, risk_level: 'MEDIUM', blocking_count: 0 })
+    expect(mem.getHistory('agent-a')).toHaveLength(1)
+    expect(mem.getHistory('agent-a')[0].verdict).toBe('PASS')
   })
 
   test('history capped at maxHistory (default 50)', () => {
     const mem = new TrustMemory({ maxHistory: 3 })
     for (let i = 0; i < 5; i++) {
-      mem.record('agent', { verdict: 'PASS', trust_score: 100, risk_level: 'LOW', blocking_count: 0 })
+      mem.record('agent-a', { verdict: 'PASS', trust_score: 100, risk_level: 'LOW', blocking_count: 0 })
     }
-    expect(mem.getHistory('agent')).toHaveLength(3)
+    expect(mem.getHistory('agent-a')).toHaveLength(3)
   })
 
   test('most recent entry kept when capped', () => {
     const mem = new TrustMemory({ maxHistory: 2 })
-    mem.record('agent', { verdict: 'BLOCK', trust_score: 10, risk_level: 'CRITICAL', blocking_count: 5 })
-    mem.record('agent', { verdict: 'PASS', trust_score: 95, risk_level: 'LOW', blocking_count: 0 })
-    mem.record('agent', { verdict: 'PASS_WITH_WARNINGS', trust_score: 75, risk_level: 'MEDIUM', blocking_count: 0 })
-    const history = mem.getHistory('agent')
+    mem.record('agent-a', { verdict: 'BLOCK', trust_score: 10, risk_level: 'CRITICAL', blocking_count: 5 })
+    mem.record('agent-a', { verdict: 'PASS', trust_score: 95, risk_level: 'LOW', blocking_count: 0 })
+    mem.record('agent-a', { verdict: 'PASS_WITH_WARNINGS', trust_score: 75, risk_level: 'MEDIUM', blocking_count: 0 })
+    const history = mem.getHistory('agent-a')
     expect(history).toHaveLength(2)
     expect(history[0].verdict).toBe('PASS') // second oldest retained
     expect(history[1].verdict).toBe('PASS_WITH_WARNINGS') // most recent
@@ -36,8 +36,8 @@ describe('TrustMemory', () => {
 
   test('getScore returns 0-100 number after first record', () => {
     const mem = new TrustMemory()
-    mem.record('agent', { verdict: 'PASS', trust_score: 100, risk_level: 'LOW', blocking_count: 0 })
-    const score = mem.getScore('agent')
+    mem.record('agent-a', { verdict: 'PASS', trust_score: 100, risk_level: 'LOW', blocking_count: 0 })
+    const score = mem.getScore('agent-a')
     expect(score).not.toBeNull()
     expect(score!).toBeGreaterThanOrEqual(0)
     expect(score!).toBeLessThanOrEqual(100)
@@ -45,9 +45,9 @@ describe('TrustMemory', () => {
 
   test('getSummary returns agent_id, score, trend, review_count', () => {
     const mem = new TrustMemory()
-    mem.record('agent', { verdict: 'PASS', trust_score: 95, risk_level: 'LOW', blocking_count: 0 })
-    const summary = mem.getSummary('agent')
-    expect(summary.agent_id).toBe('agent')
+    mem.record('agent-a', { verdict: 'PASS', trust_score: 95, risk_level: 'LOW', blocking_count: 0 })
+    const summary = mem.getSummary('agent-a')
+    expect(summary.agent_id).toBe('agent-a')
     expect(summary.reliability_score).not.toBeNull()
     expect(['improving', 'stable', 'degrading']).toContain(summary.drift_trend)
     expect(summary.review_count).toBe(1)

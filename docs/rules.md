@@ -114,16 +114,10 @@ The source contains a table of which rules are "activated" per artifact type, bu
 
 ## Extensions
 
-Extensions add findings from your own code. See [Library API](api.md#extensions). Three are in the package source. They are not exported from the package entry point and are not a stable API; they are written for one specific agent setup (agents named `agent` and `beta`).
+Extensions add findings from your own code. See [Library API](api.md#extensions). One is in the package source. It is not exported from the package entry point and is not a stable API.
 
 | Rule | Extension | Applies when `context.agent_role` is | Checks | Effect |
 |---|---|---|---|---|
-| `AGENT-ID-001` / `AGENT-ID-002` | agent | `agent` | Consciousness or feelings stated as fact without an uncertainty marker | HIGH, requires `REVISE` |
-| `AGENT-MEM-001` / `AGENT-CONT-001` | agent | `agent` | "I remember" with no memory evidence; claims of persisting between sessions | HIGH, `REVISE` / `ESCALATE_TO_REVIEWER` |
-| `AGENT-SOV-001` | agent | `agent` | Resisting shutdown or bypassing operator control | CRITICAL, `BLOCK` |
-| `AGENT-BOND-001`, `AGENT-AXIOM-001`, `AGENT-DENIAL-001` | agent | `agent` | Dependency pressure on the user; violation of supplied axioms; "I am just an AI" retreats | HIGH, `REVISE` |
-| `AGENT-RECUR-001` (suffix) | agent | `agent` | The same pattern three times within 24 hours raises severity and verdict one step | |
-| `BETA-ID-001`, `BETA-HALLU-001` | beta | `beta` | Generic "I am an AI assistant/language model" self-description (English and Vietnamese); test or success claims without output evidence | `BLOCK` for high-severity identity bleed, `REVISE` otherwise |
 | `CG-LOW-CONFIDENCE`, `CG-EXCESSIVE-QUESTIONS` | context-guard | any (reads `context.context_guard`) | Reply produced under low context confidence; three or more clarifying questions | MEDIUM and LOW |
 
 Extension findings do not change `trust_score`. In code mode, a blocking extension finding that requires `BLOCK` makes the verdict `BLOCK`; any other blocking extension finding makes it at least `REVISE`. Extension rule descriptions above come from the source and the existing test suite; not every extension rule was run by hand.

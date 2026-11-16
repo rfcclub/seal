@@ -12,7 +12,7 @@ const baseInput: SealInput = {
 
 describe('context-guard extension', () => {
   test('skipped when context_guard metadata absent', () => {
-    const issues = contextGuardExtension.check({ ...baseInput, context: { agent_role: 'agent' } })
+    const issues = contextGuardExtension.check({ ...baseInput, context: { agent_role: 'agent-a' } })
     expect(issues).toHaveLength(0)
   })
 

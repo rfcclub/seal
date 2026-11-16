@@ -24,7 +24,7 @@ Only what `dist/index.js` exports is the public API:
 | `SealInputError` | error class |
 | types `SealInput`, `SealVerdict`, `SealExtension`, `LLMReviewerAdapter` | TypeScript types |
 
-The package has no `exports` map, so deep imports such as `seal-gate/dist/types.js` or `seal-gate/dist/extensions/agent/index.js` resolve today. They are **not** a stable API and may move without notice. That covers the Alpha, Beta and context-guard extensions, the `drift` module (a separate experimental feature that keeps a SQLite database under `~/.seal/`; not documented here), the `openai-provider` adapter, and helper types such as `SealIssue` and `Verdict`. The types `SealIssue` and `SealEvidence` are reachable as `SealVerdict['blocking_issues'][number]` and `SealInput['evidence']`.
+The package has no `exports` map, so deep imports such as `seal-gate/dist/types.js` or `seal-gate/dist/extensions/context-guard/index.js` resolve today. They are **not** a stable API and may move without notice. That covers the context-guard extension, the `drift` module (a separate experimental feature that keeps a SQLite database under `~/.seal/`; not documented here), the `openai-provider` adapter, and helper types such as `SealIssue` and `Verdict`. The types `SealIssue` and `SealEvidence` are reachable as `SealVerdict['blocking_issues'][number]` and `SealInput['evidence']`.
 
 ## Seal
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'bun:test'
 import { ExtensionRegistry } from '../../src/engine/extension-registry.ts'
 import type { SealExtension, SealInput } from '../../src/types.ts'
 
-// Extensions (agent, beta, etc.) are optional add-ons run through ExtensionRegistry.run(),
+// Extensions are optional add-ons run through ExtensionRegistry.run(),
 // which wraps ext.check() in try/catch. A throwing extension degrades to a LOW/OTHER
 // advisory finding rather than crashing the whole review or silently vanishing.
 // Tested against a fresh ExtensionRegistry instance (not the Seal singleton) — Seal.extend()

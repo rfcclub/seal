@@ -12,15 +12,11 @@ Seal reads files and strings. It does not call GitHub, open issues, comment on p
 
 The repository has a `hooks/` directory. **It is not included in the npm package** (the package ships `dist`, `src`, `docs` and `USAGE.md`). To use the hooks, clone the repository and point your agent's settings at the scripts. The TypeScript hooks need Bun, and they import `../src/index.ts`, so they run from inside a checkout.
 
-These hooks were written for one specific agent setup: they hard-code agent names (`agent`, `beta`, `qwen`), and their header comments contain example paths such as `~/work/seal-gate` that you must replace. Treat them as worked examples to adapt.
+The hook below is a worked example: its header comments contain example paths such as `~/work/seal-gate` that you must replace. Adapt it before use.
 
 | Hook | Host | Event | What it does |
 |---|---|---|---|
 | `claude-pre-tool-use.sh` | Claude Code | PreToolUse | Blocks destructive shell commands before they run. |
-| `claude-stop-hook.ts` | Claude Code | Stop | Reviews the last assistant message; blocks the stop on `BLOCK` or escalation. |
-| `qwen-post-tool-use.ts` | Qwen Code | PostToolUse | Reviews tool results. |
-| `qwen-stop-hook.ts` | Qwen Code | Stop | Reviews the final message for generic-AI self-description and ungrounded claims. |
-| `qwen-drift-guard.ts` | Qwen Code | (library function) | Experimental drift check. **Broken as shipped**, see below. |
 
 ### claude-pre-tool-use.sh
 
@@ -32,28 +28,6 @@ A shell script that reads the Claude Code hook JSON on stdin (`tool_name`, `tool
 | `AX502` | git push --force, git reset --hard, git branch -D, git clean -fd |
 
 Tested: a destructive git command and an rm -rf command are blocked, a harmless `ls -la` prints nothing, and a `Write` tool call containing rm -rf text is not blocked (by design). Two things to know: the `AX502` here means "destructive git", while the library's `AX502` means "production deployment"; and the message says "use seal gate override", but no such override exists in the code.
-
-### claude-stop-hook.ts
-
-Reads the Stop hook input (`transcript_path`), takes the last assistant message and the last six user and assistant turns, runs `Seal.review` as `llm_response` with the Alpha extension, and prints `{"decision":"block","reason":...}` if the verdict is `BLOCK`, `ESCALATE_TO_REVIEWER` or `ESCALATE_TO_HUMAN`. It is fail-open: bad input, a missing transcript or any error ends with exit 0 and no output (tested with a missing transcript).
-
-Things to know before you enable it:
-
-- **The LLM overlay is off unless you enable it.** The hook registers a reviewer only when both `SEAL_LLM_BASE_URL` and `SEAL_LLM_MODEL` are set in the environment the hook runs in; `SEAL_LLM_KEY_ENV` (the name of the variable that holds the key) is optional. Nothing is hard-coded: no vendor, URL, model or key variable. With the two variables unset, no reviewer is registered and nothing leaves your machine.
-- When it is enabled, it sends the last six user and assistant turns (as the spec) and the last assistant message (as the output) on every Stop to **whatever endpoint you configured**, so use an endpoint you trust with your conversation. If you name a key variable and it is unset, the reviewer fails before any request and the review carries a LOW "LLM reviewer failed" finding. See [LLM overlay](llm-overlay.md).
-- It hard-codes `agent_id` and `agent_role` to `agent`.
-- Evidence is always empty, so `TW201` (no test evidence) is always present. That is only `REVISE`-level, so it does not block by itself.
-- The `reason` it reports is the evidence text of the first blocking finding. That is often `TW201` rather than the rule that actually caused the `BLOCK` (see the Qwen stop hook run below).
-
-### qwen-post-tool-use.ts and qwen-stop-hook.ts
-
-The post-tool-use hook reviews results of `Write`, `Edit`, `MultiEdit`, `Bash`, `Shell` and `Test` tools and skips all others. It chooses the artifact type from the tool name, raises the risk hint from keywords in the output (delete, rm -rf, drop table: CRITICAL; auth, password, token, migration: HIGH) and returns `continue: false` for `BLOCK` and escalations. It uses `agent_id` `qwen` and role `beta`. Not run: described from the source.
-
-The stop hook reads `last_assistant_message` and applies the Beta extension. Tested with "As an AI language model, I do not have feelings." Result: `{"continue":false,...,"decision":"block"}` with the reason "Implementation artifact has no test evidence" (the `TW201` text), not the identity-bleed finding that caused the block.
-
-### qwen-drift-guard.ts
-
-It imports `../drift/index.ts` and `../drift/drift-db.ts`, but those files are in `../src/drift/`, so the import fails from the `hooks/` directory. It is also unfinished (a TODO says it does not parse its own config file). Do not use it as it stands.
 
 ## Orca
 
