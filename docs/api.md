@@ -200,7 +200,7 @@ An adapter is any object with `review(input, partial)` returning the signal obje
 - It **rewrites the test file on disk** for each mutation, runs `run_command`, and restores the original in a `finally` block. A hard kill of the process during a run could leave a mutated file, so run it on a clean working tree (a hard kill during a run was not tested).
 - It first runs the unmutated test. If that fails or errors, or already prints assertion-failure text, the result is `{ skipped: true, reason: 'inconclusive: ...' }`.
 - Mutations are simple text rewrites: `expect(...).toBe(x)` to `.not.toBe(x)` (and the same for `toEqual`, `toMatch`, `toContain`, `toBeDefined`, `toBeTruthy`, `toBeFalsy`), `===` and `!==` swapped, `true` and `false` swapped, the first integer of 2 or more increased by 1, and `<=` and `>` flipped.
-- A mutation counts as killed only if the run exits with code 1 and its output matches `DEFAULT_FAILURE_PATTERN` (an `AssertionError` or `expect(received)` line at the start of a line). Output text cannot say whose assertion failed; exact attribution is an open limitation, [issue #14](https://github.com/rfcclub/seal-gate/issues/14).
+- A mutation counts as killed only if the run exits with code 1 and its output matches `DEFAULT_FAILURE_PATTERN` (an `AssertionError` or `expect(received)` line at the start of a line). Output text cannot say whose assertion failed; exact attribution is an open limitation, [issue #10](https://github.com/rfcclub/seal/issues/10).
 - Result: `{ pinned: true, survivors: [] }`, `{ pinned: false, survivors: [...] }` (a survivor is the full mutated source) or `{ skipped: true, reason }`.
 
 `breedMutations(source)` returns the mutated sources without running anything.

@@ -48,7 +48,7 @@ The words "verified" and "tested" count as a test-result claim. Either supply a 
 
 ### TW203 or TW205 fires and looks wrong
 
-Known: [#16](https://github.com/rfcclub/seal-gate/issues/16) and [#17](https://github.com/rfcclub/seal-gate/issues/17). See [Rules](rules.md#why-tw203-and-tw205-are-known-to-be-wrong).
+Known: [#11](https://github.com/rfcclub/seal/issues/11) and [#12](https://github.com/rfcclub/seal/issues/12). See [Rules](rules.md#why-tw203-and-tw205-are-known-to-be-wrong).
 
 ### My `--spec` or `--locked-criteria` file seems ignored
 
@@ -80,9 +80,9 @@ Everything below was confirmed against `0.6.0-beta.1` (a build of this branch) o
 
 | # | Problem | Where documented |
 |---|---|---|
-| 1 | TW203 judges the word "regression", not fail-before/pass-after evidence. [#16](https://github.com/rfcclub/seal-gate/issues/16) (open) | [Rules](rules.md) |
-| 2 | TW205's auth flag matches unchanged context and removed lines. [#17](https://github.com/rfcclub/seal-gate/issues/17) (open) | [Rules](rules.md) |
-| 3 | Mutation-probe kills are judged from output text, so assertion failures cannot be attributed exactly. [#14](https://github.com/rfcclub/seal-gate/issues/14) (open) | [API](api.md#spec-coverage-and-mutation-probe-helpers) |
+| 1 | TW203 judges the word "regression", not fail-before/pass-after evidence. [#11](https://github.com/rfcclub/seal/issues/11) (open) | [Rules](rules.md) |
+| 2 | TW205's auth flag matches unchanged context and removed lines. [#12](https://github.com/rfcclub/seal/issues/12) (open) | [Rules](rules.md) |
+| 3 | Mutation-probe kills are judged from output text, so assertion failures cannot be attributed exactly. [#10](https://github.com/rfcclub/seal/issues/10) (open) | [API](api.md#spec-coverage-and-mutation-probe-helpers) |
 | 4 | The CLI cannot supply evidence; `seal code` always gets `TW201`. | [CLI](cli.md) |
 | 5 | `--risk` is upper-case only (the help text says lower case); `--agent-id` does nothing; `--artifact-type` works only with `review`; `seal --llm code file.md` reads `code` as the value of `--llm` and exits 2. | [CLI](cli.md) |
 | 6 | LLM findings do not affect the verdict (except `CL403`) but can appear in `blocking_issues`. Plan reviews ignore the LLM reviewer. | [LLM overlay](llm-overlay.md) |
@@ -99,7 +99,7 @@ Everything below was confirmed against `0.6.0-beta.1` (a build of this branch) o
 
 ## Fixed problems
 
-- **The `seal` command printed nothing and exited 0 on Node 22.17 and older, 23.x and 24.0 to 24.1** ([issue #22](https://github.com/rfcclub/seal-gate/issues/22), closed; fixed in [#23](https://github.com/rfcclub/seal-gate/pull/23), included in `0.6.0-beta.1`). The entry guard used `import.meta.main`, which those Node versions do not define, so even `--version` printed nothing. The CLI now finds its own entry path and runs on every Node in `engines` (`>=22.5.0`). If you still see silent exit 0 with empty output, you have an older package (`0.6.0-beta.0` or earlier): upgrade. In a script, never treat exit 0 with empty output as a pass; parse the `--json` output and require a `verdict` field.
+- **The `seal` command printed nothing and exited 0 on Node 22.17 and older, 23.x and 24.0 to 24.1** (issue #22 (archived), closed; fixed in [#23](https://github.com/rfcclub/seal/pull/23), included in `0.6.0-beta.1`). The entry guard used `import.meta.main`, which those Node versions do not define, so even `--version` printed nothing. The CLI now finds its own entry path and runs on every Node in `engines` (`>=22.5.0`). If you still see silent exit 0 with empty output, you have an older package (`0.6.0-beta.0` or earlier): upgrade. In a script, never treat exit 0 with empty output as a pass; parse the `--json` output and require a `verdict` field.
 - **The LLM overlay used to default to a specific vendor** (bare `--llm` posted your text to it, and a custom base URL could borrow that vendor's key variable). Fixed in the same change: no default provider, URL, model or key variable; see [LLM overlay](llm-overlay.md).
 
 Two more observations on the output: `fabricated_evidence` and the integrity check are part of the result shape, but in all test runs `fabricated_evidence` was empty (no built-in code-mode rule attaches file and line citations to verify), and the CLI never prints `trust_memory_summary`.

@@ -6,7 +6,7 @@ The package installs one command, `seal` (`dist/cli.js`). Everything on this pag
 seal <command> [options]
 ```
 
-**Node version.** The `seal` command runs on every Node version the package declares (`>=22.5.0`). It was checked by hand on 22.12.0, 22.17.1, 22.18.0, 23.11.0, 24.1.0 and 24.2.0 when the entry-point fix landed ([#23](https://github.com/rfcclub/seal-gate/pull/23)), and the quick start was re-run on Node 26.5.0 for these docs. It also runs under Bun (tested: 1.3.14). Releases before `0.6.0-beta.1` printed nothing and exited 0 on some Node versions; see [Troubleshooting](troubleshooting.md#fixed-problems).
+**Node version.** The `seal` command runs on every Node version the package declares (`>=22.5.0`). It was checked by hand on 22.12.0, 22.17.1, 22.18.0, 23.11.0, 24.1.0 and 24.2.0 when the entry-point fix landed ([#23](https://github.com/rfcclub/seal/pull/23)), and the quick start was re-run on Node 26.5.0 for these docs. It also runs under Bun (tested: 1.3.14). Releases before `0.6.0-beta.1` printed nothing and exited 0 on some Node versions; see [Troubleshooting](troubleshooting.md#fixed-problems).
 
 ## Commands
 

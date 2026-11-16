@@ -5,11 +5,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rfcclub/seal-gate.git"
+    "url": "git+https://github.com/rfcclub/seal.git"
   },
-  "homepage": "https://github.com/rfcclub/seal-gate#readme",
+  "homepage": "https://github.com/rfcclub/seal#readme",
   "bugs": {
-    "url": "https://github.com/rfcclub/seal-gate/issues"
+    "url": "https://github.com/rfcclub/seal/issues"
   },
   "engines": {
     "node": ">=22.5.0"
