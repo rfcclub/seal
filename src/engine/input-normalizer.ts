@@ -24,6 +24,8 @@ export class InputNormalizer {
         build_log: input.evidence?.build_log ?? '',
         diff: input.evidence?.diff ?? '',
         references: input.evidence?.references ?? [],
+        // Passed through untouched; TW203 validates it and fails closed on a malformed record.
+        ...(input.evidence?.red_green !== undefined ? { red_green: input.evidence.red_green } : {}),
       },
       risk_hint: input.risk_hint ?? null,
       context: input.context,

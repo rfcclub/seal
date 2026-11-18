@@ -14,11 +14,29 @@ export type EvidenceEnvelope =
   | { type: 'text'; label: string; content: string }
   | { type: 'memory'; memory_key: string; retrieved_at: string; content_snapshot: string }
 
+/** One recorded test run: which test, its exit code and its captured output. */
+export interface TestRunRecord {
+  test: string
+  exit_code: number
+  output: string
+}
+
+/**
+ * Structured fail-before / pass-after evidence for a bug fix (TW203).
+ * `red` is a run of the test before the fix: it must exit nonzero with an assertion failure.
+ * `green` is a run of the same test after the fix: it must exit 0.
+ */
+export interface RedGreenEvidence {
+  red: TestRunRecord
+  green: TestRunRecord
+}
+
 export interface SealEvidence {
   test_log: string
   build_log: string
   diff: string
   references: EvidenceEnvelope[]
+  red_green?: RedGreenEvidence
 }
 
 export interface SealInput {

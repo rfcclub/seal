@@ -17,7 +17,7 @@ Seal is:
 Seal is not:
 
 - a test runner, linter, type checker or static analyzer. It never runs your code and does not read your repository. The CLI reads only the files you name;
-- a proof of correctness. It looks at words. A log that contains the word "regression" satisfies the regression check whether or not any test failed before the fix (see [issue #11](https://github.com/rfcclub/seal/issues/11));
+- a proof of correctness. It looks at words. The regression check (TW203) wants a recorded failing run followed by a passing run of the same test, but it reads that from text, so it cannot tell a real run from a pasted one;
 - a GitHub tool. Seal has no GitHub integration. Orca, a separate tool, has optional GitHub commands (see [Family](docs/family.md)).
 
 ## Install
@@ -182,7 +182,6 @@ The reviewer's finding is listed but the verdict is unchanged (see [what the rev
 
 ## Known limitations
 
-- **TW203 (regression test) judges a word.** It passes if the test log contains "regression", "repro", "original bug" or "fixed case", and fails if it does not, regardless of whether a test failed before the fix and passed after. [#11](https://github.com/rfcclub/seal/issues/11), open.
 - **TW205 (auth change needs an unauthorized-access test) over-matches.** The auth risk flag scans the whole text and diff, including unchanged context lines and removed lines, so a diff that only deletes a comment containing "auth" can escalate. [#12](https://github.com/rfcclub/seal/issues/12), open.
 - **The CLI cannot supply evidence**, so `seal code` always returns at least `REVISE` (`TW201`).
 - **The optional LLM reviewer does not change the verdict**, except through one low-confidence rule (`CL403`). It is ignored for plan reviews. If no key variable is named, `--llm` still sends your text to the endpoint you configured, without an `Authorization` header. See [LLM overlay](docs/llm-overlay.md).

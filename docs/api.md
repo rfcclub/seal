@@ -51,7 +51,7 @@ Seal.review(input: Partial<SealInput>, options?: { propertyEvidenceVerifier?: ..
 | `artifact_type` | `'llm_response' \| 'code_diff' \| 'test_plan' \| 'design' \| 'migration' \| 'plan_review'` | yes | |
 | `output` | string | yes | Non-empty after trimming. |
 | `spec` | string \| null | no | Default `null`. |
-| `evidence` | `{ test_log, build_log, diff: string, references: EvidenceEnvelope[] }` | no | Missing fields default to empty. |
+| `evidence` | `{ test_log, build_log, diff: string, references: EvidenceEnvelope[], red_green?: { red, green } }` | no | Missing fields default to empty. `red_green` is optional structured fail-before/pass-after evidence for `TW203`: `{ red: { test, exit_code, output }, green: { test, exit_code, output } }` (see [Rules](rules.md#what-satisfies-tw203)). |
 | `risk_hint` | `'LOW' \| 'MEDIUM' \| 'HIGH' \| 'CRITICAL' \| null` | no | Upper case. Can only raise risk. |
 | `context` | object | no | See below. |
 

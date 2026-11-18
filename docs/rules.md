@@ -27,20 +27,28 @@ Evidence-envelope findings have no rule id (they print as `[undefined]` in the C
 |---|---|---|---|
 | `TW201` | HIGH, blocking | 15 | `artifact_type` is `code_diff` or `llm_response` and `test_log` is empty. (run) |
 | `TW202` | MEDIUM | 10 | Risk is MEDIUM or higher, `test_log` is non-empty, and it contains none of: fail, error, exception, invalid, unauthorized, forbidden, edge, negative, reject, timeout, backoff (whole words, any case). I.e. "happy path only". (run) |
-| `TW203` | HIGH, blocking | none | The text contains fix, fixed, bug, defect or regression, `test_log` is non-empty, and the log contains none of: regression, repro, original bug, fixed case. (run) See [issue #11](https://github.com/rfcclub/seal/issues/11). |
+| `TW203` | HIGH, blocking | none | The text contains fix, fixed, bug, defect or regression, `test_log` is non-empty, and there is no fail-before/pass-after evidence (below). The finding lists exactly which pieces are missing. A keyword such as "regression" is never evidence. (run) |
 | `TW204` | MEDIUM | none | The text mentions retry, retries, exponential backoff, timeout or circuit breaker, `test_log` is non-empty, and it has none of the `TW202` words. (run) |
 | `TW205` | CRITICAL, blocking | none; the policy escalates | The HIGH-risk pattern (auth, authentication, authorization, JWT, OAuth, sudo, admin, privilege, chmod) matches anywhere in `output` plus `diff`, `test_log` is non-empty, and it contains none of: unauthorized, forbidden, 403, 401, permission denied, access denied, exhausted, "no candidate/access/permission", "not allowed/permitted/authorized", "reject(ed) access/action/request". Result: at least `ESCALATE_TO_REVIEWER`. (run) See [issue #12](https://github.com/rfcclub/seal/issues/12). |
 
 TW203, TW204 and TW205 stay silent when `test_log` is empty; `TW201` covers that case.
 
-### Why TW203 and TW205 are known to be wrong
+### What satisfies TW203
 
-Both issues are open. Each was reproduced against `0.6.0-beta.0`:
+TW203 is satisfied only by fail-before/pass-after evidence: a RED run of a named test (nonzero exit, assertion failure) paired with a GREEN run of the same test (exit 0). Two forms are accepted.
 
-- **TW203** ([#11](https://github.com/rfcclub/seal/issues/11)) tests the log for the word, not for evidence that a test failed before the fix and passed after. A log of passing tests that never says "regression" raises `TW203`. A log that is only the word "regression" satisfies it. The trigger side is also loose: any mention of "fix" or "bug" in the text counts as a bug-fix claim.
+- **Structured:** `evidence.red_green = { red: { test, exit_code, output }, green: { test, exit_code, output } }`. `red.exit_code` must be a nonzero integer, `red.output` must show an assertion failure (a crash or syntax error does not count), `green.exit_code` must be 0, and both records must name the same test. A malformed record fails closed.
+- **Free text** in `test_log`: a section labelled `RED` (or "before fix") that shows a failing run and an assertion failure, and a section labelled `GREEN` (or "after fix") that shows a passing run with no failures, both naming the same test (a `*.test.*` path, a `(fail)`/`(pass)` line, or `test("name")`).
+
+The trigger side is unchanged and still loose: any mention of "fix" or "bug" in the text counts as a bug-fix claim.
+
+### Why TW205 is known to be wrong
+
+The issue is open. It was reproduced against `0.6.0-beta.0`:
+
 - **TW205** ([#12](https://github.com/rfcclub/seal/issues/12)) decides "this is an auth change" from the whole `output` and `diff` strings, including unchanged context lines and removed lines. A diff whose only change deletes a comment containing the word "auth" classified the review as HIGH risk and escalated it to `ESCALATE_TO_REVIEWER`. The same classification adds 10 points of risk deduction.
 
-Until these are fixed, treat both findings as prompts to look, not as evidence.
+Until this is fixed, treat the finding as a prompt to look, not as evidence.
 
 ## Overconfidence-language rules (code mode)
 
