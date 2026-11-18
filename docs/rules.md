@@ -29,7 +29,7 @@ Evidence-envelope findings have no rule id (they print as `[undefined]` in the C
 | `TW202` | MEDIUM | 10 | Risk is MEDIUM or higher, `test_log` is non-empty, and it contains none of: fail, error, exception, invalid, unauthorized, forbidden, edge, negative, reject, timeout, backoff (whole words, any case). I.e. "happy path only". (run) |
 | `TW203` | HIGH, blocking | none | The text contains fix, fixed, bug, defect or regression, `test_log` is non-empty, and there is no fail-before/pass-after evidence (below). The finding lists exactly which pieces are missing. A keyword such as "regression" is never evidence. (run) |
 | `TW204` | MEDIUM | none | The text mentions retry, retries, exponential backoff, timeout or circuit breaker, `test_log` is non-empty, and it has none of the `TW202` words. (run) |
-| `TW205` | CRITICAL, blocking | none; the policy escalates | The HIGH-risk pattern (auth, authentication, authorization, JWT, OAuth, sudo, admin, privilege, chmod) matches anywhere in `output` plus `diff`, `test_log` is non-empty, and it contains none of: unauthorized, forbidden, 403, 401, permission denied, access denied, exhausted, "no candidate/access/permission", "not allowed/permitted/authorized", "reject(ed) access/action/request". Result: at least `ESCALATE_TO_REVIEWER`. (run) See [issue #12](https://github.com/rfcclub/seal/issues/12). |
+| `TW205` | CRITICAL, blocking | none; the policy escalates | The auth risk flag is set (below), `test_log` is non-empty, and it contains none of: unauthorized, forbidden, 403, 401, permission denied, access denied, exhausted, "no candidate/access/permission", "not allowed/permitted/authorized", "reject(ed) access/action/request". Result: at least `ESCALATE_TO_REVIEWER`. The finding names the matched token and its line (`file:line` for a diff). (run) |
 
 TW203, TW204 and TW205 stay silent when `test_log` is empty; `TW201` covers that case.
 
@@ -42,13 +42,17 @@ TW203 is satisfied only by fail-before/pass-after evidence: a RED run of a named
 
 The trigger side is unchanged and still loose: any mention of "fix" or "bug" in the text counts as a bug-fix claim.
 
-### Why TW205 is known to be wrong
+### What sets the auth flag (TW205)
 
-The issue is open. It was reproduced against `0.6.0-beta.0`:
+The HIGH-risk pattern is auth, authentication, authorization, JWT, OAuth, sudo, admin, privilege or chmod (whole words, any case). It is matched against:
 
-- **TW205** ([#12](https://github.com/rfcclub/seal/issues/12)) decides "this is an auth change" from the whole `output` and `diff` strings, including unchanged context lines and removed lines. A diff whose only change deletes a comment containing the word "auth" classified the review as HIGH risk and escalated it to `ESCALATE_TO_REVIEWER`. The same classification adds 10 points of risk deduction.
+- **Added or changed lines** of `evidence.diff` (the `+` lines of a unified diff, minus the `+++` file headers) of the files in scope. Unchanged context lines never set the flag. A match sets `RK-HIGH`. The `+++` header is recognised only in a file header, so an added line whose text starts with `++` still counts.
+- **Files in scope:** `context.scope_files` (an array of paths) restricts the check to those files; other files in the same diff are ignored. Without it every file in the diff is in scope.
+- **Removed lines** that are not comment-only (and every line of a deleted file) set a separate rule, `RK-HIGH-REMOVED`, with the same HIGH risk and escalation: removing auth code is still a change to look at, but it is reported on its own rule and as a removed line.
+- **`output`**, the author's own text, is scanned as prose. When there is no `evidence.diff` (the CLI never passes one) it is the only source.
+- A `diff` that is not in unified format (no `@@` hunk header) cannot be split into lines, so it is scanned whole. That keeps the check fail-closed.
 
-Until this is fixed, treat the finding as a prompt to look, not as evidence.
+Only the HIGH pattern was narrowed. The CRITICAL and MEDIUM risk patterns still scan the whole `output` plus `diff` text.
 
 ## Overconfidence-language rules (code mode)
 

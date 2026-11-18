@@ -52,7 +52,7 @@ TW203 wants fail-before/pass-after evidence, and the finding lists which piece i
 
 ### TW205 fires and looks wrong
 
-Known: [#12](https://github.com/rfcclub/seal/issues/12). See [Rules](rules.md#why-tw205-is-known-to-be-wrong).
+The finding names the matched token and its line. The flag looks only at added or changed lines (and removed non-comment lines, as `RK-HIGH-REMOVED`), not at unchanged context. If your diff holds unrelated files, name the files under review in `context.scope_files`. A diff that is not in unified format is scanned whole. See [Rules](rules.md#what-sets-the-auth-flag-tw205).
 
 ### My `--spec` or `--locked-criteria` file seems ignored
 
@@ -84,21 +84,20 @@ Everything below was confirmed against `0.6.0-beta.1` (a build of this branch) o
 
 | # | Problem | Where documented |
 |---|---|---|
-| 1 | TW205's auth flag matches unchanged context and removed lines. [#12](https://github.com/rfcclub/seal/issues/12) (open) | [Rules](rules.md) |
-| 2 | Mutation-probe kills are judged from output text, so assertion failures cannot be attributed exactly. [#10](https://github.com/rfcclub/seal/issues/10) (open) | [API](api.md#spec-coverage-and-mutation-probe-helpers) |
-| 3 | The CLI cannot supply evidence; `seal code` always gets `TW201`. | [CLI](cli.md) |
-| 4 | `--risk` is upper-case only (the help text says lower case); `--agent-id` does nothing; `--artifact-type` works only with `review`; `seal --llm code file.md` reads `code` as the value of `--llm` and exits 2. | [CLI](cli.md) |
-| 5 | LLM findings do not affect the verdict (except `CL403`) but can appear in `blocking_issues`. Plan reviews ignore the LLM reviewer. | [LLM overlay](llm-overlay.md) |
-| 6 | Overconfidence deductions never reach `trust_score`; `CL-D01` cannot fire; `CL-B/C/D/E` phrases fire even inside code fences. | [Rules](rules.md) |
-| 7 | Plan-mode rules `PR003` and `PR004` cannot fire; `PR001` matches phrases in different sections without checking that they name the same object; `PR-HB-01/02/03` end as `BLOCK`. | [Rules](rules.md) |
-| 8 | A missing `--spec` / `--locked-criteria` file, or criteria JSON that is not an array, is silently ignored. Runtime errors share exit code 1 with failing verdicts. | [CLI](cli.md) |
-| 9 | Human-readable output prints `[undefined]` for findings with no rule id and ignores `NO_COLOR`. | [CLI](cli.md) |
-| 10 | The hooks are not in the npm package; they hard-code agent names and example paths; `qwen-drift-guard.ts` has a broken import; the Stop hooks report the first blocking finding (often `TW201`) as the reason. | [Agent hooks](agent-hooks.md) |
-| 11 | The npm package ships the `src/drift/__tests__` test files and `docs/`, but not `hooks/`; `dist/adapters/openai-provider.js` is present but not exported from the entry point and is unsupported. | [Library API](api.md#what-is-public), [LLM overlay](llm-overlay.md#not-supported) |
-| 12 | Risk is never `LOW`: the classifier starts at `MEDIUM` and a hint can only raise it. | [Concepts](concepts.md#risk) |
-| 13 | No Python package exists. | [Python](python.md) |
-| 14 | The rule-activation table in the source is computed but never used. | [Rules](rules.md) |
-| 15 | The `Seal` object is global state: extensions cannot be removed, and the LLM reviewer and trust memory persist across calls. | [API](api.md) |
+| 1 | Mutation-probe kills are judged from output text, so assertion failures cannot be attributed exactly. [#10](https://github.com/rfcclub/seal/issues/10) (open) | [API](api.md#spec-coverage-and-mutation-probe-helpers) |
+| 2 | The CLI cannot supply evidence; `seal code` always gets `TW201`. | [CLI](cli.md) |
+| 3 | `--risk` is upper-case only (the help text says lower case); `--agent-id` does nothing; `--artifact-type` works only with `review`; `seal --llm code file.md` reads `code` as the value of `--llm` and exits 2. | [CLI](cli.md) |
+| 4 | LLM findings do not affect the verdict (except `CL403`) but can appear in `blocking_issues`. Plan reviews ignore the LLM reviewer. | [LLM overlay](llm-overlay.md) |
+| 5 | Overconfidence deductions never reach `trust_score`; `CL-D01` cannot fire; `CL-B/C/D/E` phrases fire even inside code fences. | [Rules](rules.md) |
+| 6 | Plan-mode rules `PR003` and `PR004` cannot fire; `PR001` matches phrases in different sections without checking that they name the same object; `PR-HB-01/02/03` end as `BLOCK`. | [Rules](rules.md) |
+| 7 | A missing `--spec` / `--locked-criteria` file, or criteria JSON that is not an array, is silently ignored. Runtime errors share exit code 1 with failing verdicts. | [CLI](cli.md) |
+| 8 | Human-readable output prints `[undefined]` for findings with no rule id and ignores `NO_COLOR`. | [CLI](cli.md) |
+| 9 | The hooks are not in the npm package; they hard-code agent names and example paths; `qwen-drift-guard.ts` has a broken import; the Stop hooks report the first blocking finding (often `TW201`) as the reason. | [Agent hooks](agent-hooks.md) |
+| 10 | The npm package ships the `src/drift/__tests__` test files and `docs/`, but not `hooks/`; `dist/adapters/openai-provider.js` is present but not exported from the entry point and is unsupported. | [Library API](api.md#what-is-public), [LLM overlay](llm-overlay.md#not-supported) |
+| 11 | Risk is never `LOW`: the classifier starts at `MEDIUM` and a hint can only raise it. | [Concepts](concepts.md#risk) |
+| 12 | No Python package exists. | [Python](python.md) |
+| 13 | The rule-activation table in the source is computed but never used. | [Rules](rules.md) |
+| 14 | The `Seal` object is global state: extensions cannot be removed, and the LLM reviewer and trust memory persist across calls. | [API](api.md) |
 
 ## Fixed problems
 

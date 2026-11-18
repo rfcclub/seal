@@ -52,6 +52,8 @@ export interface SealInput {
     aria_pattern_memory?: Record<string, unknown>
     // plan_review mode: locked acceptance criteria from intent.md / self-check.md
     locked_criteria?: Array<{ id: string; text: string; source_file?: string; source_line?: number }>
+    // code mode: the files under review; the auth risk flag ignores other files in the diff
+    scope_files?: string[]
     [key: string]: unknown
   }
 }

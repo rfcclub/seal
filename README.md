@@ -182,7 +182,6 @@ The reviewer's finding is listed but the verdict is unchanged (see [what the rev
 
 ## Known limitations
 
-- **TW205 (auth change needs an unauthorized-access test) over-matches.** The auth risk flag scans the whole text and diff, including unchanged context lines and removed lines, so a diff that only deletes a comment containing "auth" can escalate. [#12](https://github.com/rfcclub/seal/issues/12), open.
 - **The CLI cannot supply evidence**, so `seal code` always returns at least `REVISE` (`TW201`).
 - **The optional LLM reviewer does not change the verdict**, except through one low-confidence rule (`CL403`). It is ignored for plan reviews. If no key variable is named, `--llm` still sends your text to the endpoint you configured, without an `Authorization` header. See [LLM overlay](docs/llm-overlay.md).
 - `--risk` only accepts upper-case values (`HIGH`, not `high`), contrary to the help text.

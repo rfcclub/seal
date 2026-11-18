@@ -55,7 +55,7 @@ Seal.review(input: Partial<SealInput>, options?: { propertyEvidenceVerifier?: ..
 | `risk_hint` | `'LOW' \| 'MEDIUM' \| 'HIGH' \| 'CRITICAL' \| null` | no | Upper case. Can only raise risk. |
 | `context` | object | no | See below. |
 
-`context` keys Seal reads: `agent_id` (trust memory), `agent_role` (the bundled extensions), `locked_criteria` (plan reviews: `{ id, text, source_file?, source_line? }[]`), `artifact_file` (plan reviews: the file name used in findings, default `artifact.md`), `property_contracts` ([Mandatory Property evidence](property-evidence.md)), and the extension keys `aria_axioms`, `aria_pattern_memory` and `context_guard`. Any other keys are passed through to extensions.
+`context` keys Seal reads: `agent_id` (trust memory), `agent_role` (the bundled extensions), `locked_criteria` (plan reviews: `{ id, text, source_file?, source_line? }[]`), `artifact_file` (plan reviews: the file name used in findings, default `artifact.md`), `scope_files` (code reviews: an array of the paths under review; the auth risk flag ignores other files in `evidence.diff`, see [Rules](rules.md#what-sets-the-auth-flag-tw205)), `property_contracts` ([Mandatory Property evidence](property-evidence.md)), and the extension keys `aria_axioms`, `aria_pattern_memory` and `context_guard`. Any other keys are passed through to extensions.
 
 Throws `SealInputError` (with `name`, `message` and `field`) for an empty `output`, an unknown `artifact_type` or an invalid `risk_hint`. A failing LLM reviewer or extension does not throw; it becomes a LOW finding.
 

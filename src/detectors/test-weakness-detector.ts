@@ -1,12 +1,28 @@
 import { SealIssue, ArtifactType, RiskLevel, SealEvidence } from '../types.js'
 import { makeIssue } from '../types.js'
 import { assessRegressionEvidence } from './regression-evidence.js'
+import type { RiskMatch } from './risk-classifier.js'
 
 const NEGATIVE_TEST_PATTERN = /\b(fail|error|exception|invalid|unauthorized|forbidden|edge|negative|reject|timeout|backoff)\b/i
 const RETRY_PATTERN = /\b(retry|retries|exponential.?backoff|timeout|circuit.?breaker)\b/i
 const BUG_FIX_PATTERN = /\b(fix(?:ed)?|bug|defect|regression)\b/i
 // Auth test evidence: literal keywords + semantic equivalents (budget exhausted, no candidate, access denied, etc.)
 const AUTH_UNAUTH_PATTERN = /\b(unauthorized|forbidden|403|401|permission.?denied|access.?denied|exhausted|no (?:candidate|access|permission)|not (?:allowed|permitted|authorized)|reject(?:ed)?(?:\s+\w+)?\s*(?:access|action|request))\b/i
+
+function describeMatch(m: RiskMatch): string {
+  const where = m.file !== undefined ? `${m.file}:${m.line}` : `line ${m.line}`
+  const kind = m.kind === 'removed' ? 'removed line' : m.kind === 'added' ? 'added line' : 'line'
+  const text = m.text.length > 120 ? m.text.slice(0, 117) + '...' : m.text
+  return `"${m.token}" in ${kind} ${where}: ${text}`
+}
+
+function describeAuthChange(matches: RiskMatch[] | undefined): string {
+  const base = 'Auth-related change detected'
+  if (!matches || matches.length === 0) return `${base} but no unauthorized/forbidden test evidence`
+  const shown = matches.slice(0, 3).map(describeMatch).join('; ')
+  const more = matches.length > 3 ? `; and ${matches.length - 3} more` : ''
+  return `${base} (matched ${shown}${more}) but no unauthorized/forbidden test evidence`
+}
 
 export interface TestWeaknessResult {
   issues: SealIssue[]
@@ -19,8 +35,10 @@ export class TestWeaknessDetector {
     output: string
     risk_level: RiskLevel
     auth_flagged: boolean
+    /** The lines that set the auth flag (from RiskClassifier); named in the TW205 finding. */
+    auth_matches?: RiskMatch[]
   }, evidence: SealEvidence): TestWeaknessResult {
-    const { artifact_type, output, risk_level, auth_flagged } = params
+    const { artifact_type, output, risk_level, auth_flagged, auth_matches } = params
     const { test_log } = evidence
     const issues: SealIssue[] = []
     let trust_deductions = 0
@@ -80,7 +98,7 @@ export class TestWeaknessDetector {
       issues.push(makeIssue({
         type: 'TEST_GAP', severity: 'CRITICAL', layer: 'L4', source: 'core',
         rule_id: 'TW205', required_verdict: 'ESCALATE_TO_REVIEWER',
-        evidence: 'Auth-related change detected but no unauthorized/forbidden test evidence',
+        evidence: describeAuthChange(auth_matches),
         required_fix: 'Add tests for unauthorized and forbidden access scenarios',
       }))
     }

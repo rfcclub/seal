@@ -23,6 +23,14 @@ let llmAdapter: LLMReviewerAdapter | null = null
 let llmMode: 'always' | 'auto' = 'always'
 let trustMemory: TrustMemory | null = null
 
+/** context.scope_files: the files under review. Anything else in the diff is ignored by the auth risk flag. */
+function scopeFilesOf(context: SealInput['context']): string[] | undefined {
+  const s = context?.scope_files
+  if (!Array.isArray(s)) return undefined
+  const files = s.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+  return files.length > 0 ? files : undefined
+}
+
 export const Seal = {
   extend(ext: SealExtension): void {
     registry.add(ext)
@@ -64,6 +72,7 @@ export const Seal = {
       output: input.output,
       diff: input.evidence.diff,
       risk_hint: input.risk_hint,
+      scope_files: scopeFilesOf(input.context),
     })
 
     // Step 5: Check evidence envelopes (with citation verification)
@@ -102,12 +111,14 @@ export const Seal = {
     }
 
     // Step 8: Test weakness detection
-    const authFlagged = riskResult.matched_rules.includes('RK-HIGH')
+    // RK-HIGH: auth in added or changed lines. RK-HIGH-REMOVED: removed auth code (its own rule).
+    const authFlagged = riskResult.matched_rules.includes('RK-HIGH') || riskResult.matched_rules.includes('RK-HIGH-REMOVED')
     const testResult = TestWeaknessDetector.detect({
       artifact_type: input.artifact_type,
       output: input.output,
       risk_level: riskResult.risk_level,
       auth_flagged: authFlagged,
+      auth_matches: [...riskResult.high_matches, ...riskResult.removed_high_matches],
     }, input.evidence)
 
     // Step 9: Confidence language detection (now with structural claims)
